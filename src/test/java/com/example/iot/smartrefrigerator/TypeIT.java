@@ -1,5 +1,15 @@
 package com.example.iot.smartrefrigerator;
 
+import static io.restassured.RestAssured.delete;
+import static io.restassured.RestAssured.given;
+import static io.restassured.RestAssured.when;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -10,15 +20,11 @@ import org.springframework.http.MediaType;
 import com.example.iot.smartrefrigerator.entity.Type;
 
 import io.restassured.RestAssured;
-import static io.restassured.RestAssured.*;
-import static org.hamcrest.Matchers.*;
-
-import java.util.ArrayList;
-import java.util.List;
+import io.restassured.filter.log.LogDetail;
 
 public class TypeIT {
 
-	private static final String BASE_PATH = "/types";
+	public static final String BASE_PATH = "/types";
 	
 	@BeforeAll
 	public static void beforeClass() {
@@ -49,18 +55,7 @@ public class TypeIT {
 	@Test
 	public void saveNewType() {
 		
-		String selfLink = 
-			given().
-				contentType(MediaType.APPLICATION_JSON_VALUE).
-				body(testType).
-			when().
-				post(BASE_PATH).
-			then().
-				body("name", equalTo(testTypeName)).
-			extract().
-				path("_links.self.href");
-		
-		cleanupList.add(selfLink);
+		String selfLink = save(testType);
 
 		when().
 			get(BASE_PATH).
@@ -72,18 +67,7 @@ public class TypeIT {
 	@Test
 	public void updateType() {
 		
-		String selfLink = 
-			given().
-				contentType(MediaType.APPLICATION_JSON_VALUE).
-				body(testType).
-			when().
-				post(BASE_PATH).
-			then().
-				body("name", equalTo(testTypeName)).
-			extract().
-				path("_links.self.href");
-		
-		cleanupList.add(selfLink);
+		String selfLink = save(testType);
 		
 		String newName = RandomStringUtils.randomAlphanumeric(6) + "-Dairy";
 		Type newType = new Type();
@@ -96,6 +80,24 @@ public class TypeIT {
 			put(selfLink).
 		then().
 			body("name", equalTo(newName));
+	}
+	
+	private String save(Type type) {
+		String href = given().
+				contentType(MediaType.APPLICATION_JSON_VALUE).
+				body(type).
+				log().ifValidationFails(LogDetail.BODY).
+			when().
+				post(BASE_PATH).
+			then().
+				log().ifValidationFails(LogDetail.BODY).
+				body("name", equalTo(type.getName())).
+			extract().
+				path("_links.self.href");
+		
+		cleanupList.add(href);
+		
+		return href;
 	}
 
 }

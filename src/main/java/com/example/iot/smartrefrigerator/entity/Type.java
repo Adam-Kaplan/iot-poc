@@ -33,6 +33,6 @@ public class Type implements TypeExcerpt {
 	@Size(min=1,max=256,message="{com.example.iot.smartrefrigerator.entity.Type.name.size}")
 	private String name;
 	
-	@OneToMany(orphanRemoval=true, mappedBy="type", cascade={CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+	@OneToMany(orphanRemoval=true, mappedBy="type", cascade={CascadeType.ALL})
 	private List<Item> items;
 }
