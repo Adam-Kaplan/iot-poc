@@ -8,6 +8,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
@@ -15,10 +16,13 @@ import com.example.iot.smartrefrigerator.excerpt.TypeExcerpt;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
 @EqualsAndHashCode(of = "id")
+@NoArgsConstructor
 @Entity
+@Valid
 public class Type implements TypeExcerpt {
 
 	@Id
@@ -26,7 +30,7 @@ public class Type implements TypeExcerpt {
 	private Long id;
 
 	@NotNull
-	@Size(min=0,max=256)
+	@Size(min=1,max=256,message="{com.example.iot.smartrefrigerator.entity.Type.name.size}")
 	private String name;
 	
 	@OneToMany(orphanRemoval=true, mappedBy="type", cascade={CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})

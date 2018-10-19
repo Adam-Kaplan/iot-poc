@@ -13,6 +13,12 @@ Gradle command to start application locally
 Gradle command to execute tests
 
     gradlew clean test
+    
+This task will execute the following tasks to execute integration tests.
+
+* flywayMigrate - setup database for application
+* bootJar - create spring boot jar
+* testServer - executes the spring boot jar in a separate process
 
 ### Local Database ###
 The local database is setup using the [gradle postgresql embedded plugin](https://github.com/honourednihilist/gradle-postgresql-embedded).
@@ -39,3 +45,9 @@ Additional values are listed [on the plugin's website](https://github.com/divine
 This will generate version and undo files using the current version number.
 
 These scripts are not production quality, and MUST be manually edited as needed.
+
+## TODO ##
+1. Validation - JSR-380 validation at controller level.  Spring Data REST does not implement this ...
+2. Message response localization.
+3. Security - Annotations to use (@EnableWebSecurity, @EnableResourceServer). Will need to be addressed once security model 
+is finalized.
