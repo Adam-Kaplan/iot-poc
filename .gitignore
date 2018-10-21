@@ -24,5 +24,7 @@
 /dist/
 /nbdist/
 /.nb-gradle/
-/bin/
+bin
 .embedpostgresql
+logs
+*.log

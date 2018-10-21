@@ -1,0 +1,134 @@
+buildscript {
+	ext {
+		springBootVersion = '2.0.6.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+		jcenter()
+	}
+	dependencies {
+		classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+		classpath 'gradle.plugin.com.github.honourednihilist:gradle-postgresql-embedded:0.4.0'
+		// https://mvnrepository.com/artifact/org.postgresql/postgresql
+        classpath 'org.postgresql:postgresql:42.2.5'
+	}
+}
+
+plugins {
+  id 'io.github.divinespear.jpa-schema-generate' version '0.3.5.1'
+  id 'org.flywaydb.flyway' version '5.2.0'
+  id 'com.github.psxpaul.execfork' version '0.1.8'
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.github.honourednihilist.gradle-postgresql-embedded'
+
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	
+	// https://mvnrepository.com/artifact/org.projectlombok/lombok
+    compile 'org.projectlombok:lombok:1.18.2'
+    
+    compile project(':shared')
+    
+    // VALIDATION
+    // https://mvnrepository.com/artifact/javax.validation/validation-api
+    compile 'javax.validation:validation-api:2.0.1.Final'
+    // https://mvnrepository.com/artifact/javax.el/javax.el-api
+    compile 'javax.el:javax.el-api:3.0.0'
+    // https://mvnrepository.com/artifact/org.glassfish/javax.el
+    compile 'org.glassfish:javax.el:3.0.0'
+    
+    // https://mvnrepository.com/artifact/org.postgresql/postgresql
+    compile 'org.postgresql:postgresql:42.2.5'
+	
+    testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+    testCompile 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+	testCompile 'io.rest-assured:rest-assured:3.1.1'
+	testCompile 'io.rest-assured:json-path:3.1.1'
+}
+
+generateSchema {
+    vendor = 'hibernate+spring'
+    packageToScan = [ 'com.example.iot.smartrefrigerator.entity' ]
+    format = true
+    
+    scriptAction = 'drop-and-create'
+    
+    outputDirectory = file("${projectDir}/src/main/resources/db/migration")
+    createOutputFileName = "V${version}__create.sql"
+    dropOutputFileName = "U${version}__drop.sql"
+    
+    if (project.hasProperty('databaseProductName')) {
+        databaseProductName = project['databaseProductName']
+    } else {
+        databaseProductName = 'PostgreSQL'
+    }
+}
+
+postgresEmbedded {
+    version = 'V10'
+    host = project['db.host']
+    port = project['db.port'] as int // zero value means a random port
+    dbName = project['db.name']
+    username = project['db.username']
+    password = project['db.password']
+    artifactStorePath = "${projectDir}/.embedpostgresql" // where PostgreSQL distributions are stored after downloading, inside home directory by default 
+    stopWhenBuildFinished = true
+    timeoutMillisBeforeStop = 0
+}
+
+flyway {
+    url = "jdbc:postgresql://${project['db.host']}:${project['db.port']}/${project['db.name']}"
+    user = project['db.username']
+    password = project['db.password']
+}
+
+flywayMigrate.dependsOn = ['startPostgres']
+
+bootRun {
+    dependsOn = ['flywayMigrate']
+    jvmArgs = [
+        "-Dspring.datasource.url=jdbc:postgresql://${project['db.host']}:${project['db.port']}/${project['db.name']}",
+		"-Dspring.datasource.username=${project['db.username']}",
+		"-Dspring.datasource.password=${project['db.password']}",
+		'-Dspring.datasource.driver-class-name=org.postgresql.Driver',
+		"-Dhibernate.dialect=${project['db.dialect']}"
+    ]
+}
+
+task testServer(type: com.github.psxpaul.task.ExecFork, dependsOn: ['flywayMigrate', 'bootJar']) {
+    commandLine = 'java'
+    args = [
+        "-Dspring.datasource.url=jdbc:postgresql://${project['db.host']}:${project['db.port']}/${project['db.name']}",
+        "-Dspring.datasource.username=${project['db.username']}",
+        "-Dspring.datasource.password=${project['db.password']}",
+        '-Dspring.datasource.driver-class-name=org.postgresql.Driver',
+        "-Dhibernate.dialect=${project['db.dialect']}",
+        '-jar', bootJar.archivePath.absolutePath
+    ]
+    stopAfter = test
+    waitForPort = 8080
+}
+
+test {
+    dependsOn = ['testServer']
+    
+    useJUnitPlatform()
+    
+    include '**/*IT.class'
+    
+    systemProperty 'application.baseURI', 'http://localhost'
+    systemProperty 'application.port', 8080
+}
